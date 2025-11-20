@@ -1,20 +1,22 @@
 import socket
 import select
 
-HOST            = ""    # All computer's network interfaces
-PORT            = 1337  # Port to listen on (non-privileged ports are > 1023)
-BACK_LOG        = 5     # maximum number of connected clients
-SELECT_TIMEOUT  = 10
-BUFF_SIZE       = 4     # maximum number of pending, not-yet-accepted connections
-soc_to_msg      = {}    # dict of message buffers
-soc_to_status   = {}    # track authenticated clients
-END_OF_MESSAGE  = '\x00'
-AUTHED_SOC      = "client authenticated"
-NEW_SOC         = "new client, not authenticated yet"
-WELCOME_MESSAGE = "Welcome! Please log in."
+HOST                = ""    # All computer's network interfaces
+PORT                = 1337  # Port to listen on (non-privileged ports are > 1023)
+BACK_LOG            = 5     # maximum number of pending, not-yet-accepted connections
+SELECT_TIMEOUT      = 10
+BUFF_SIZE           = 4     # 
+soc_to_msg          = {}    # dict of message buffers
+soc_to_status       = {}    # track authenticated clients
+registered_users    = {}
+END_OF_MESSAGE      = '\x00'
+AUTHED_SOC          = "client authenticated"
+NEW_SOC             = "new client, not authenticated yet"
+WELCOME_MESSAGE     = "Welcome! Please log in."
 
+def main(path):
+    load_users(registered_users, path)
 
-def main():
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as listenSoc:
         listenSoc.bind((HOST, PORT))
         listenSoc.listen(BACK_LOG)
@@ -29,7 +31,7 @@ def main():
                 if soc is listenSoc:
                     clientSoc, clientAddr = listenSoc.accept()
                     soc_to_msg[clientSoc] = b""
-                    soc_to_status = NEW_SOC
+                    soc_to_status[clientSoc] = NEW_SOC
                     send_message_to_client(WELCOME_MESSAGE)
                     continue
 
@@ -42,16 +44,19 @@ def main():
 
 
 def general_message_handler(soc: socket, message: bytes):
+    
     try:
         # analyze the message
         check_message_validity(message, soc_to_status[soc])
-        command, params = extract_command_and_params(message)
         
         # handle the message
         if soc_to_status[soc] == NEW_SOC:
-            auth(soc, message)
+            username, password = extract_username_and_password(message)
+            auth(soc, username, password)
             soc_to_status[soc] = AUTHED_SOC
+            send_message_to_client(soc, f"Hi {username}, good to see you.")
         else:
+            command, params = extract_command_and_params(message)
             response = route(command, params)
             send_message_to_client(soc, response)
     
@@ -66,20 +71,34 @@ def general_message_handler(soc: socket, message: bytes):
 def handle_error(e: Exception):
     pass
 
-def send_message_to_client(socket: socket, response: bytes):
-    pass
+def send_message_to_client(socket: socket, response: str):
+    socket.send(response.encode())
 
-def route(command: str, params: list[str]):
-    pass
+def route(command: str, params: list[str]) -> str:
+    return 'Hi'
+
 
 def extract_command_and_params(message: bytes) -> tuple[str, list[str]]:
-    pass
+    # decode and remove the END_OF_MESSAGE char
+    message = message.decode()[:-1]
+
+    # split, and remove the colon
+    command, *params = message.split(" ")
+    command = command[:-1]
+    
+    return command, params
+def extract_username_and_password(message: bytes) -> tuple[str, str]:
+    new_line_idx = message.find('\n')
+    username = message[7 : new_line_idx].decode()
+    password = message[new_line_idx + 11: -1].decode()
+    return username, password
+
 
 def check_message_validity(message: bytes, soc_status: str) -> bool:
-    pass
+    return
 
 def auth(soc, username, password):
-    pass
+    return
 
 def compute_lcm(x: int, y: int) -> int:
     pass
@@ -87,3 +106,6 @@ def parentheses_check(s: str) -> bool:
     pass
 def compute_caesar(text: str, shift: int) -> str:
     pass
+
+def load_users(registered_users: dict, path: str):
+    registered_users['aya'] = 'pass'
