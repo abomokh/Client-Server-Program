@@ -4,7 +4,7 @@ import select
 HOST                = ""    # All computer's network interfaces
 PORT                = 1337  # Port to listen on (non-privileged ports are > 1023)
 BACK_LOG            = 5     # maximum number of pending, not-yet-accepted connections
-SELECT_TIMEOUT      = 10
+SELECT_TIMEOUT      = 100
 BUFF_SIZE           = 4     # 
 soc_to_msg          = {}    # dict of message buffers
 soc_to_status       = {}    # track authenticated clients
@@ -21,9 +21,9 @@ def main(path):
         listenSoc.bind((HOST, PORT))
         listenSoc.listen(BACK_LOG)
         print("socket is listening...")
-
+        rlist = [listenSoc]
         while(True):
-            readable, _, _ = select(rlist=[listenSoc], wlist = [], xlist = [], timeout = SELECT_TIMEOUT)
+            readable, _, _ = select.select(rlist, [], [], SELECT_TIMEOUT)
             
             for soc in readable:
 
@@ -32,13 +32,18 @@ def main(path):
                     clientSoc, clientAddr = listenSoc.accept()
                     soc_to_msg[clientSoc] = b""
                     soc_to_status[clientSoc] = NEW_SOC
-                    send_message_to_client(WELCOME_MESSAGE)
+                    send_message_to_client(clientSoc, WELCOME_MESSAGE)
+                    print('new client connected: ', clientSoc)
+                    rlist.append(clientSoc)
                     continue
+                    
 
                 # handle other sockets
                 soc_to_msg[soc] += soc.recv(BUFF_SIZE)
-                if soc_to_msg[soc][-1] == END_OF_MESSAGE:
+                print(soc_to_msg[soc])
+                if soc_to_msg[soc].decode()[-1] == END_OF_MESSAGE:
                     # end of message. handle it and clear the buffer
+                    print("handiling message")
                     general_message_handler(soc, soc_to_msg[soc])
                     soc_to_msg[soc] = b""
 
@@ -54,6 +59,7 @@ def general_message_handler(soc: socket, message: bytes):
             username, password = extract_username_and_password(message)
             auth(soc, username, password)
             soc_to_status[soc] = AUTHED_SOC
+            print('sending message')
             send_message_to_client(soc, f"Hi {username}, good to see you.")
         else:
             command, params = extract_command_and_params(message)
@@ -109,3 +115,6 @@ def compute_caesar(text: str, shift: int) -> str:
 
 def load_users(registered_users: dict, path: str):
     registered_users['aya'] = 'pass'
+
+
+main(r"F:\ibraheem\TAU\Semester9\computer networking\ex1\users_file.txt")

@@ -10,16 +10,17 @@ QUIT_CM = "quit"
 def main():
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as clientSock:
         clientSock.connect((HOST, PORT))
-
+        print('connected!')
         # Authentication stage
         while True:
-            User = input()
-            Password = input()
+            User = input('username: ')
+            Password = input('password: ')
 
             Authentication = User + "\n" + Password + END_OF_MESSAGE
-
+            print('sending auth message...')
             clientSock.send(Authentication.encode())
-
+            
+            print('wating response from the server...')
             response = recvall(clientSock).decode()
             if (response != FAIL_LOGIN):
                 break
@@ -51,3 +52,5 @@ def recvall(sock):
             break
     # strip the END_OF_MESSAGE from the end if present
     return data.replace(END_OF_MESSAGE.encode(), b"")
+
+main()
