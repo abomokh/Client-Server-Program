@@ -15,10 +15,12 @@ soc_to_status		= {}	# track authenticated clients
 registered_users	= {}	# users recognized by the server
 
 # saved responses
-AUTHED_SOC			= "client authenticated"
-NEW_SOC				= "new client, not authenticated yet"
-WELCOME_MSG			= f"Welcome! Please log in."
-FAIL_LOGIN			= "Failed to login."
+AUTHED_SOC			   = "client authenticated"
+NEW_SOC				   = "new client, not authenticated yet"
+WELCOME_MSG			   = f"Welcome! Please log in."
+FAIL_LOGIN			   = "Failed to login."
+PARENTHESES_BALANCED   = "the parentheses are balanced: yes"
+PARENTHESES_IMBALANCED = "the parentheses are balanced: no"
 
 # custom errors
 BAD_REQUEST			= "command type is invalid or disallowed for this client"
@@ -204,14 +206,90 @@ def check_message_validity_v2(msg: bytes):
 
 
 def route(command: str, params: list[str]) -> str:
-	return 'Hi'
+	if (command == "parentheses"):
+		is_parentheses = parentheses_check(params[0])
+		return PARENTHESES_BALANCED if is_parentheses else PARENTHESES_IMBALANCED
+	
+	elif (command == "lcm"):
+		lcm = compute_lcm(params[0], params[1])
+		return "the lcm is: " + str(lcm)
+	
+	elif (command == "caesar"):
+		is_caesar_valid = check_caesar_validity(params[:-1])
+
+		if not is_caesar_valid:
+			return "error: invalid input"
+		
+		caesar = compute_caesar(params[:-1], params[-1]) 
+		return "the ciphertext is: " + caesar
+	
+	else: 
+		return BAD_REQUEST
+
 
 def compute_lcm(x: int, y: int) -> int:
-	pass
+    # handle zero case
+    if x == 0 or y == 0:
+        return 0
+    
+    # helper function: Euclidean algorithm for gcd
+    def gcd(a, b):
+        while b != 0:
+            a, b = b, a % b
+        return a
+    
+    g = gcd(x, y)
+    return abs(x * y) // g
+
 def parentheses_check(s: str) -> bool:
-	pass
-def compute_caesar(text: str, shift: int) -> str:
-	pass
+    count = 0
+    for ch in s:
+        if ch == '(':
+            count += 1
+        elif ch == ')':
+            count -= 1
+            if count < 0:
+                return False
+    return count == 0
+
+def check_caesar_validity(text: list[str]) -> bool:
+    full_text = " ".join(text)
+
+    for ch in full_text:
+        # allow only letters or spaces
+        if ch == " ":
+            continue
+
+        # if it's a letter but not English → invalid
+        if not ("A" <= ch <= "Z" or "a" <= ch <= "z"):
+            return False
+
+    return True
+
+def compute_caesar(text: list[str], shift: int) -> str:
+
+    # Join the list of words into a single string
+    full_text = " ".join(text)
+
+    # Convert everything to lowercase
+    full_text = full_text.lower()
+
+    # Normalize shift
+    shift = shift % 26
+
+    result = []
+
+    for ch in full_text:
+        if ch == " ":
+            # keep spaces as they are
+            result.append(" ")
+        else:
+            # rotate only lowercase letters
+            shifted = chr((ord(ch) - ord('a') + shift) % 26 + ord('a'))
+            result.append(shifted)
+
+    return "".join(result)
+
 
 def load_users(path: str, registered_users):
 	with open(path) as f:

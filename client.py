@@ -35,17 +35,14 @@ def main():
         
         # Commands
         while True: 
-            command = input()
+            command = input() + END_OF_MESSAGE
 
-            if (command == QUIT_CM):
-                break
-
-            command += END_OF_MESSAGE
             clientSock.send(command.encode())
 
             response = recvall(clientSock).decode()
 
             print(response)
+            ## should handle the quit command
 
 
 def recvall(sock):
