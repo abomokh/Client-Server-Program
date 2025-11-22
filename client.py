@@ -1,11 +1,17 @@
 import socket
 
 HOST = "127.0.0.1"  # The server's hostname or IP address
-PORT = 1337          # The port used by the server
+PORT = 1337         # The port used by the server
 END_OF_MESSAGE  = '\x00'
 BUFF_SIZE = 4     
 FAIL_LOGIN = "Failed to login."
 QUIT_CM = "quit"
+DEBUG = True        # debug mode
+
+def debug(log_msg):
+    if DEBUG:
+        print(f"DEBUG > {log_msg}")
+
 
 def main():
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as clientSock:
@@ -13,14 +19,15 @@ def main():
         print('connected!')
         # Authentication stage
         while True:
+            debug(recvall(clientSock).decode())
             User = input('username: ')
             Password = input('password: ')
 
-            Authentication = User + "\n" + Password + END_OF_MESSAGE
-            print('sending auth message...')
+            Authentication = f"User: {User}\nPassword: {Password}{END_OF_MESSAGE}"
+            debug('sending auth message...')
             clientSock.send(Authentication.encode())
             
-            print('wating response from the server...')
+            debug('wating response from the server...')
             response = recvall(clientSock).decode()
             if (response != FAIL_LOGIN):
                 break
@@ -42,14 +49,17 @@ def main():
 
 
 def recvall(sock):
+    debug("inside recvall")
     data = b""
     while True:
         part = sock.recv(BUFF_SIZE)
+        debug(f"receved: {part}")
         if not part:          # connection closed
             break
         data += part
         if END_OF_MESSAGE.encode() in data:
             break
+    debug(f"response: {data}")
     # strip the END_OF_MESSAGE from the end if present
     return data.replace(END_OF_MESSAGE.encode(), b"")
 
