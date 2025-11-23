@@ -16,12 +16,13 @@ registered_users	= {}	# users recognized by the server
 rlist				= []	# list of sockets to read from (the listening socket and client socket)
 
 # saved responses
-AUTHED_SOC			   = "client authenticated"
-NEW_SOC				   = "new client, not authenticated yet"
-WELCOME_MSG			   = f"Welcome! Please log in."
-FAIL_LOGIN			   = "Failed to login."
-PARENTHESES_BALANCED   = "the parentheses are balanced: yes"
-PARENTHESES_IMBALANCED = "the parentheses are balanced: no"
+NEW_SOC					= "new client, not authenticated yet"
+NEW_SOC_USER			= "new client, username receved"
+AUTHED_SOC				= "client authenticated"
+WELCOME_MSG				= f"Welcome! Please log in."
+FAIL_LOGIN				= "Failed to login."
+PARENTHESES_BALANCED	= "the parentheses are balanced: yes"
+PARENTHESES_IMBALANCED	= "the parentheses are balanced: no"
 
 # custom errors
 BAD_REQUEST			= "command type is invalid or disallowed for this client"
@@ -29,8 +30,9 @@ BAD_REQUEST			= "command type is invalid or disallowed for this client"
 # command types
 ERROR_RQST			= 0
 AUTH_RQST			= 1
-QUIT_RQST			= 2
-COMMAND_RQST		= 3
+USER_AUTH_RQST		= 2
+QUIT_RQST			= 3
+COMMAND_RQST		= 4
 
 # modes
 DEBUG				= True		# debug mode
@@ -105,6 +107,21 @@ def general_request_handler(clientSoc: socket, message: bytes):
 
 		# handle the message
 		if soc_to_status[clientSoc] == NEW_SOC:
+
+			if request_type != USER_AUTH_RQST:
+				# disallowed action from un-authed client. close connection.
+				response = BAD_REQUEST
+				send_message_to_client(clientSoc, response)
+				close_connection_with_client(clientSoc)
+				debug(BAD_REQUEST)
+				return
+			
+			else:
+				soc_to_status[clientSoc] = NEW_SOC_USER
+				return
+		
+		elif soc_to_status[clientSoc] == NEW_SOC_USER:
+
 			if request_type != AUTH_RQST:
 				# disallowed action from un-authed client. close connection.
 				response = BAD_REQUEST
@@ -113,9 +130,10 @@ def general_request_handler(clientSoc: socket, message: bytes):
 				debug(BAD_REQUEST)
 				return
 			
-			username, password = request_parts
-			response = auth(clientSoc, username, password)
-			send_message_to_client(clientSoc, response)
+			else:
+				username, password = request_parts
+				response = auth(clientSoc, username, password)
+				send_message_to_client(clientSoc, response)
 		
 		else:
 			if request_type == QUIT_RQST:
@@ -197,7 +215,7 @@ def check_message_validity_v2(msg: bytes):
 		debug("falied to analyze the request as AUTH-request")
 		return ERROR_RQST, []
 
-	# ---- Check for COMMAND message ----
+	# ---- Check for COMMAND or USER_AUTH_RQST message ----
 	if ":" in content:
 		command_part, rest = content.split(":", 1)
 		command = command_part.strip()
@@ -213,7 +231,11 @@ def check_message_validity_v2(msg: bytes):
 
 		if command in req_cmd: 
 			return COMMAND_RQST, [command] + params
+		
+		elif command == "User:":
+			return USER_AUTH_RQST, [command] + params
 		else: 
+			debug("falied to analyze the request as COMMAND-request or USER-AUTH-request")
 			return ERROR_RQST, []
 
 	# ---- nothing mached ----
