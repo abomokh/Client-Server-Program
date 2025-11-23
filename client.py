@@ -8,6 +8,9 @@ FAIL_LOGIN = "Failed to login."
 QUIT_CM = "quit"
 DEBUG = True        # debug mode
 
+# custom errors
+BAD_REQUEST			= "command type is invalid or disallowed for this client"
+
 def debug(log_msg):
     if DEBUG:
         print(f"DEBUG > {log_msg}")
@@ -39,10 +42,15 @@ def main():
 
             clientSock.send(command.encode())
 
+            if command == quit + END_OF_MESSAGE: 
+                break
+
             response = recvall(clientSock).decode()
 
             print(response)
-            ## should handle the quit command
+            
+            if response == BAD_REQUEST:
+                break
 
 
 def recvall(sock):

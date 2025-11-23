@@ -95,6 +95,9 @@ def general_request_handler(clientSoc: socket, message: bytes):
 		request_type, request_parts = check_message_validity_v2(message)
 		debug(f"request is {request_type}, {request_parts}")
 		if request_type == ERROR_RQST:
+			response = BAD_REQUEST
+			send_message_to_client(clientSoc, response)
+			close_connection_with_client(clientSoc)
 			raise ValueError(BAD_REQUEST)
 		
 		# asset if the message type is of allowed
@@ -103,6 +106,8 @@ def general_request_handler(clientSoc: socket, message: bytes):
 		if soc_to_status[clientSoc] == NEW_SOC:
 			if request_type != AUTH_RQST:
 				# disallowed action from un-authed client. close connection.
+				response = BAD_REQUEST
+				send_message_to_client(clientSoc, response)
 				close_connection_with_client(clientSoc)
 				debug(BAD_REQUEST)
 				return
@@ -201,7 +206,12 @@ def check_message_validity_v2(msg: bytes):
 		rest = rest.strip()
 		params = rest.split(" ") if rest else []
 
-		return COMMAND_RQST, [command] + params
+		req_cmd = {"lcm", "parentheses", "caesar"}
+
+		if command in req_cmd: 
+			return COMMAND_RQST, [command] + params
+		else: 
+			return ERROR_RQST, []
 
 	# ---- nothing mached ----
 	debug("falied to analyze the request")
@@ -214,20 +224,18 @@ def route(command: str, params: list[str]) -> str:
 		return PARENTHESES_BALANCED if is_parentheses else PARENTHESES_IMBALANCED
 	
 	elif (command == "lcm"):
-		lcm = compute_lcm(params[0], params[1])
+		lcm = compute_lcm(int(params[0]), int(params[1]))
 		return "the lcm is: " + str(lcm)
 	
-	elif (command == "caesar"):
+	else: #(command == "caesar"):
 		is_caesar_valid = check_caesar_validity(params[:-1])
 
 		if not is_caesar_valid:
 			return "error: invalid input"
 		
-		caesar = compute_caesar(params[:-1], params[-1]) 
+		caesar = compute_caesar(params[:-1], int(params[-1])) 
 		return "the ciphertext is: " + caesar
-	
-	else: 
-		return BAD_REQUEST
+
 
 
 def compute_lcm(x: int, y: int) -> int:
