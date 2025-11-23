@@ -26,7 +26,11 @@ def main():
         # Authentication stage
         while True:
             debug("inside the auth loop")
+            
             User = input()
+            UserAuthentication = f"{User}{END_OF_MESSAGE}"
+            clientSock.send(UserAuthentication.encode())
+            
             Password = input()
 
             Authentication = f"{User}\n{Password}{END_OF_MESSAGE}"
