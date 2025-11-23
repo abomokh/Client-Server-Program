@@ -82,7 +82,7 @@ def main(path):
 					soc_to_msg.pop(soc)
 					soc_to_status.pop(soc)
 
-				elif soc_to_msg[soc].decode()[-1] == END_OF_MESSAGE:
+				elif soc_to_msg[soc].decode()[-len(END_OF_MESSAGE)] == END_OF_MESSAGE:
 					# end of message. handle it and clear the buffer
 					general_request_handler(soc, soc_to_msg[soc])
 					soc_to_msg[soc] = b""
