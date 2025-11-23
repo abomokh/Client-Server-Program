@@ -19,26 +19,33 @@ def debug(log_msg):
 def main():
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as clientSock:
         clientSock.connect((HOST, PORT))
-        print('connected!')
-        
+        debug('connected!')
+        response = recvall(clientSock).decode()
+        print(response)
+
         # Authentication stage
         while True:
             debug("inside the auth loop")
-            User = input('User: ')
-            Password = input('Password: ')
+            User = input()
+            Password = input()
 
-            Authentication = f"User: {User}\nPassword: {Password}{END_OF_MESSAGE}"
+            Authentication = f"{User}\n{Password}{END_OF_MESSAGE}"
             debug('sending auth message...')
             clientSock.send(Authentication.encode())
             
             debug('wating response from the server...')
             response = recvall(clientSock).decode()
-            if (response != FAIL_LOGIN):
-                debug("the response is not FAIL_LOGIN")
-                debug(f"response type is {type(response)}")
-                debug(f"saved_response type is {type(FAIL_LOGIN)}")
+            
+            if (response == BAD_REQUEST):
+                return
+            elif response == FAIL_LOGIN:
+                print(response)
+                continue
+            else: # response == "Hi..."
+                print(response)
                 break
-            #maybe should handle the case where client's connection is closed while trying to login
+
+            # maybe should handle the case where client's connection is closed while trying to login
         
         # Commands
         while True: 

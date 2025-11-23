@@ -56,6 +56,7 @@ def main(path):
 		while(True):
 
 			debug("calling select()")
+			debug(f"len(rlist): {len(rlist)}")
 			readable, _, _ = select.select(rlist, [], [], SELECT_TIMEOUT)
 			
 			for soc in readable:
@@ -119,7 +120,6 @@ def general_request_handler(clientSoc: socket, message: bytes):
 		else:
 			if request_type == QUIT_RQST:
 				close_connection_with_client(clientSoc)
-				debug(BAD_REQUEST)
 				return
 			
 			elif request_type == COMMAND_RQST:
@@ -185,11 +185,11 @@ def check_message_validity_v2(msg: bytes):
 		return QUIT_RQST, ["quit"]
 
 	# ---- Check for AUTH message ----
-	if content.startswith("User:") and "\nPassword:" in content:
-		parts = content.split("\nPassword:", 1)
+	if content.startswith("User: ") and "\nPassword: " in content:
+		parts = content.split("\nPassword: ", 1)
 		if len(parts) == 2:
 			user_part = parts[0][6:]
-			pass_part = parts[1][1:]
+			pass_part = parts[1]
 
 			if user_part != "" and pass_part != "":
 				return AUTH_RQST, [user_part, pass_part]
