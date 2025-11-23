@@ -1,9 +1,11 @@
+import os
 import socket
 import select
+import sys
 
 # configs
 HOST				= ""	# All computer's network interfaces
-PORT				= 1337	# Port to listen on (non-privileged ports are > 1023)
+DEFAULT_PORT		= 1337	# Port to listen on (non-privileged ports are > 1023)
 BACK_LOG			= 5		# maximum number of pending, not-yet-accepted connections
 SELECT_TIMEOUT		= 3
 BUFF_SIZE			= 40
@@ -48,11 +50,12 @@ def debug(log_msg):
 			with open(LOG_PATH, "w") as log_file:
 				log_file.write(f"DEBUG > {log_msg}")
 
-def main(path):
+def main(path, port = DEFAULT_PORT):
 	load_users(path, registered_users)
 
 	with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as listenSoc:
-		listenSoc.bind((HOST, PORT))
+		listenSoc.bind((HOST, port))
+		debug(f"{listenSoc.getsockname()}")
 		listenSoc.listen(BACK_LOG)
 		debug("socket is listening...")
 		rlist.append(listenSoc)
@@ -277,68 +280,68 @@ def route(command: str, params: list[str]) -> str:
 
 
 def compute_lcm(x: int, y: int) -> int:
-    # handle zero case
-    if x == 0 or y == 0:
-        return 0
-    
-    # helper function: Euclidean algorithm for gcd
-    def gcd(a, b):
-        while b != 0:
-            a, b = b, a % b
-        return a
-    
-    g = gcd(x, y)
-    return abs(x * y) // g
+	# handle zero case
+	if x == 0 or y == 0:
+		return 0
+		
+	# helper function: Euclidean algorithm for gcd
+	def gcd(a, b):
+		while b != 0:
+			a, b = b, a % b
+		return a
+		
+	g = gcd(x, y)
+	return abs(x * y) // g
 
 def parentheses_check(s: str) -> bool:
-    count = 0
-    for ch in s:
-        if ch == '(':
-            count += 1
-        elif ch == ')':
-            count -= 1
-            if count < 0:
-                return False
-    return count == 0
+	count = 0
+	for ch in s:
+		if ch == '(':
+			count += 1
+		elif ch == ')':
+			count -= 1
+			if count < 0:
+				return False
+	return count == 0
 
 def check_caesar_validity(text: list[str]) -> bool:
-    full_text = " ".join(text)
+	full_text = " ".join(text)
 
-    for ch in full_text:
-        # allow only letters or spaces
-        if ch == " ":
-            continue
+	for ch in full_text:
+		# allow only letters or spaces
+		if ch == " ":
+			continue
 
-        # if it's a letter but not English → invalid
-        if not ("A" <= ch <= "Z" or "a" <= ch <= "z"):
-            return False
+		# if it's a letter but not English → invalid
+		if not ("A" <= ch <= "Z" or "a" <= ch <= "z"):
+			return False
 
-    return True
+	return True
 
 
 def compute_caesar(text: list[str], shift: int) -> str:
 
-    # Join the list of words into a single string
-    full_text = " ".join(text)
+	# Join the list of words into a single string
+	full_text = " ".join(text)
 
-    # Convert everything to lowercase
-    full_text = full_text.lower()
+	# Convert everything to lowercase
+	full_text = full_text.lower()
 
-    # Normalize shift
-    shift = shift % 26
+	# Normalize shift
+	shift = shift % 26
 
-    result = []
+	result = []
 
-    for ch in full_text:
-        if ch == " ":
-            # keep spaces as they are
-            result.append(" ")
-        else:
-            # rotate only lowercase letters
-            shifted = chr((ord(ch) - ord('a') + shift) % 26 + ord('a'))
-            result.append(shifted)
+	for ch in full_text:
+		if ch == " ":
+			# keep spaces as they are
+			result.append(" ")
+		else:
+			# rotate only lowercase letters
+			shifted = chr((ord(ch) - ord('a') + shift) % 26 + ord('a'))
+			result.append(shifted)
 
-    return "".join(result)
+	return "".join(result)
 
 def load_users(path: str, registered_users):
 	with open(path) as f:
@@ -350,4 +353,32 @@ def load_users(path: str, registered_users):
 # |                                    Running The Server                                    |
 # +------------------------------------------------------------------------------------------+
 
-main(r"F:\ibraheem\TAU\Semester9\computer networking\ex1\users_file.txt")
+if __name__ == "__main__":
+	# Check number of arguments
+	if len(sys.argv) < 2 or len(sys.argv) > 3:
+		print(f"Usage: {sys.argv[0]} users_file [port]")
+		sys.exit(1)
+
+	users_file = sys.argv[1]
+
+	# Validate file path
+	if not os.path.isfile(users_file):
+		print(f"Error: '{users_file}' is not a valid file path.")
+		sys.exit(1)
+
+	# Validate optional port
+	port = None
+	if len(sys.argv) == 3:
+		try:
+			port = int(sys.argv[2])
+			if not (1 <= port <= 65535):
+				raise ValueError()
+		except ValueError:
+			print(f"Error: Port must be an integer between 1 and 65535.")
+			sys.exit(1)
+	
+	if port:
+		main(users_file, port)
+	else:
+		main(users_file)
+
