@@ -1,96 +1,129 @@
 import socket
+import sys
 
-HOST = "127.0.0.1"  # The server's hostname or IP address
-PORT = 1337         # The port used by the server
-END_OF_MESSAGE  = '\x00'
-BUFF_SIZE = 40
-FAIL_LOGIN =    "Failed to login."
-QUIT_CM = "quit"
-DEBUG = False        # debug mode
+DEFAULT_HOST		= "localhost"
+DEFAULT_PORT		= 1337
+HOST				= "127.0.0.1"	# The server's hostname or IP address
+PORT				= 1337			# The port used by the server
+END_OF_MESSAGE		= '\x00'
+BUFF_SIZE			= 40
+FAIL_LOGIN			= "Failed to login."
+QUIT_CM				= "quit"
+DEBUG				= False			# debug mode
 
 # custom errors
-BAD_REQUEST			    = "command type is invalid or disallowed for this client"
-AWAITING_PASSWORD		= "User inserted. Awaiting Password"
+BAD_REQUEST			= "command type is invalid or disallowed for this client"
+AWAITING_PASSWORD	= "User inserted. Awaiting Password"
+
 
 def debug(log_msg):
-    if DEBUG:
-        print(f"DEBUG > {log_msg}")
+	if DEBUG:
+		print(f"DEBUG > {log_msg}")
 
 
-def main():
-    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as clientSock:
-        clientSock.connect((HOST, PORT))
-        debug('connected!')
-        response = recvall(clientSock).decode()
-        print(response)
+def main(hostname = DEFAULT_HOST, port = DEFAULT_PORT):
 
-        # Authentication stage
-        while True:
-            debug("inside the auth loop")
-            
-            User = input()
-            UserAuthentication = f"{User}{END_OF_MESSAGE}"
-            debug('sending auth message...')
-            clientSock.send(UserAuthentication.encode())
-            debug('wating response from the server...')
-            response = recvall(clientSock).decode()
-            
-            if (response == BAD_REQUEST):
-                return
-            elif (response != AWAITING_PASSWORD):
-                debug("expected BAD_REQUEST or AWAITING_PASSWORD. panic!")
-                return
+	with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as clientSock:
+		clientSock.connect((hostname, port))
+		debug(f'connected to Connecting to {hostname}:{port}')
+		response = recvall(clientSock).decode()
+		print(response)
 
-            Password = input()
+		# Authentication stage
+		while True:
+			debug("inside the auth loop")
+			
+			User = input()
+			UserAuthentication = f"{User}{END_OF_MESSAGE}"
+			debug('sending auth message...')
+			clientSock.send(UserAuthentication.encode())
+			debug('wating response from the server...')
+			response = recvall(clientSock).decode()
+			
+			if (response == BAD_REQUEST):
+				return
+			elif (response != AWAITING_PASSWORD):
+				debug("expected BAD_REQUEST or AWAITING_PASSWORD. panic!")
+				return
 
-            Authentication = f"{User}\n{Password}{END_OF_MESSAGE}"
-            debug('sending auth message...')
-            clientSock.send(Authentication.encode())
-            
-            debug('wating response from the server...')
-            response = recvall(clientSock).decode()
-            
-            if (response == BAD_REQUEST):
-                return
-            elif response == FAIL_LOGIN:
-                print(response)
-                continue
-            else: # response == "Hi..."
-                print(response)
-                break
+			Password = input()
 
-            # maybe should handle the case where client's connection is closed while trying to login
-        
-        # Commands
-        while True: 
-            command = input() + END_OF_MESSAGE
+			Authentication = f"{User}\n{Password}{END_OF_MESSAGE}"
+			debug('sending auth message...')
+			clientSock.send(Authentication.encode())
+			
+			debug('wating response from the server...')
+			response = recvall(clientSock).decode()
+			
+			if (response == BAD_REQUEST):
+				return
+			elif response == FAIL_LOGIN:
+				print(response)
+				continue
+			else: # response == "Hi..."
+				print(response)
+				break
 
-            clientSock.send(command.encode())
+			# maybe should handle the case where client's connection is closed while trying to login
+		
+		# Commands
+		while True: 
+			command = input() + END_OF_MESSAGE
 
-            if command == QUIT_CM + END_OF_MESSAGE: 
-                break
+			clientSock.send(command.encode())
 
-            response = recvall(clientSock).decode()
+			if command == QUIT_CM + END_OF_MESSAGE: 
+				break
 
-            print(response)
-            
-            if response == BAD_REQUEST:
-                break
+			response = recvall(clientSock).decode()
+
+			print(response)
+			
+			if response == BAD_REQUEST:
+				break
 
 
 def recvall(sock):
-    debug("inside recvall")
-    data = b""
-    while True:
-        part = sock.recv(BUFF_SIZE)
-        debug(f"receved: {part}")
-        if not part:          # connection closed
-            break
-        data += part
-        if END_OF_MESSAGE.encode() in data:
-            break
-    debug(f"response: {data}")
-    # strip the END_OF_MESSAGE from the end if present
-    return data.replace(END_OF_MESSAGE.encode(), b"")
+	debug("inside recvall")
+	data = b""
+	while True:
+		part = sock.recv(BUFF_SIZE)
+		debug(f"receved: {part}")
+		if not part:		  # connection closed
+			break
+		data += part
+		if END_OF_MESSAGE.encode() in data:
+			break
+	debug(f"response: {data}")
+	# strip the END_OF_MESSAGE from the end if present
+	return data.replace(END_OF_MESSAGE.encode(), b"")
 
-main()
+
+
+
+# +------------------------------------------------------------------------------------------+
+# |                                    Running The Client                                    |
+# +------------------------------------------------------------------------------------------+
+
+if __name__ == "__main__":
+    # Check number of arguments
+    if len(sys.argv) > 3:
+        print(f"Usage: {sys.argv[0]} [hostname [port]]")
+        sys.exit(1)
+
+    # Optional hostname
+    hostname = sys.argv[1] if len(sys.argv) >= 2 else DEFAULT_HOST
+
+    # Optional port
+    if len(sys.argv) == 3:
+        try:
+            port = int(sys.argv[2])
+            if not (1 <= port <= 65535):
+                raise ValueError()
+        except ValueError:
+            print(f"Error: Port must be an integer between 1 and 65535.")
+            sys.exit(1)
+    else:
+        port = DEFAULT_PORT
+
+    main(hostname, port)
