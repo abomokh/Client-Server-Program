@@ -13,6 +13,7 @@ END_OF_MESSAGE		= '\x00'
 soc_to_msg			= {}	# dict of message buffers
 soc_to_status		= {}	# track authenticated clients
 registered_users	= {}	# users recognized by the server
+rlist				= []	# list of sockets to read from (the listening socket and client socket)
 
 # saved responses
 AUTHED_SOC			   = "client authenticated"
@@ -51,7 +52,7 @@ def main(path):
 		listenSoc.bind((HOST, PORT))
 		listenSoc.listen(BACK_LOG)
 		debug("socket is listening...")
-		rlist = [listenSoc]
+		rlist.append(listenSoc)
 		while(True):
 
 			debug("calling select()")
@@ -130,7 +131,9 @@ def general_request_handler(clientSoc: socket, message: bytes):
 		return
 
 def close_connection_with_client(clientSoc: socket):
-	# TODO
+	rlist.remove(clientSoc)
+	soc_to_msg.pop(clientSoc)
+	soc_to_status.pop(clientSoc)
 	return
 
 def send_message_to_client(socket: socket, response: str):
@@ -290,55 +293,11 @@ def compute_caesar(text: list[str], shift: int) -> str:
 
     return "".join(result)
 
-
 def load_users(path: str, registered_users):
 	with open(path) as f:
 		for user in f:
-			print(user.split("\t"))
 			username, password = user.split("\t")
 			registered_users[username] = password.replace('\n', "")
-
-
-
-
-
-
-# +------------------------------------------------------------------------------------------+
-# |                                        Deprecated                                        |
-# +------------------------------------------------------------------------------------------+
-def check_message_validity_v1(msg: bytes, soc_status: str) -> bool:
-	'''# **⚠️ Deprecated Function!!** Do Not Use'''
-	debug("inside check_message_validity")
-	if type(msg) != bytes or len(msg) == 0:
-		return False
-	msg = msg.decode()
-	import re
-	eom = re.escape(END_OF_MESSAGE)
-	if soc_status == NEW_SOC:
-		login_pattern = rf"^User:\s*(.+)\nPassword:\s*(.+){eom}$"
-		return re.match(login_pattern, msg) is not None
-	if soc_status == AUTHED_SOC:
-		return False # TODO
-def extract_command_and_params(message: bytes) -> tuple[str, list[str]]:
-	'''# **⚠️ Deprecated Function!!** Do Not Use'''
-	# decode and remove the END_OF_MESSAGE char
-	message = message.decode()[:-len(END_OF_MESSAGE)]
-
-	# split, and remove the colon
-	command, *params = message.split(" ")
-	command = command[:-1]
-		
-	return command, params
-def extract_username_and_password(message: bytes) -> tuple[str, str]:
-	'''# **⚠️ Deprecated Function!!** Do Not Use'''
-	new_line_idx = message.find(b'\n')
-	username = message[6 : new_line_idx].decode()
-	password = message[new_line_idx + 11: -1].decode()
-	debug(f"{username} ({len(username)}), {password} ({len(password)})")
-	return username, password
-
-
-
 
 # +------------------------------------------------------------------------------------------+
 # |                                    Running The Server                                    |
