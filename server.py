@@ -125,12 +125,15 @@ def general_request_handler(clientSoc: socket, message: bytes):
 			elif request_type == COMMAND_RQST:
 				command, *params = request_parts
 				response = route(command, params)
+				send_message_to_client(clientSoc, response)
 			
-			else:
+			else: #not really 
 				response = BAD_REQUEST
+				send_message_to_client(clientSoc, response)
+				close_connection_with_client(clientSoc)
 
-			send_message_to_client(clientSoc, response)
-		
+
+			
 	except Exception as e:
 		debug(f"ERROR in general_request_handler: {e}")
 		return
