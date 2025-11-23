@@ -6,7 +6,7 @@ HOST				= ""	# All computer's network interfaces
 PORT				= 1337	# Port to listen on (non-privileged ports are > 1023)
 BACK_LOG			= 5		# maximum number of pending, not-yet-accepted connections
 SELECT_TIMEOUT		= 3
-BUFF_SIZE			= 4
+BUFF_SIZE			= 40
 END_OF_MESSAGE		= '\x00'
 
 # data structures
@@ -23,6 +23,7 @@ WELCOME_MSG				= f"Welcome! Please log in."
 FAIL_LOGIN				= "Failed to login."
 PARENTHESES_BALANCED	= "the parentheses are balanced: yes"
 PARENTHESES_IMBALANCED	= "the parentheses are balanced: no"
+AWAITING_PASSWORD		= "User inserted. Awaiting Password"
 
 # custom errors
 BAD_REQUEST			= "command type is invalid or disallowed for this client"
@@ -35,7 +36,7 @@ QUIT_RQST			= 3
 COMMAND_RQST		= 4
 
 # modes
-DEBUG				= True		# debug mode
+DEBUG				= False		# debug mode
 LOG_PATH			= None		# None for stdout
 
 
@@ -118,6 +119,7 @@ def general_request_handler(clientSoc: socket, message: bytes):
 			
 			else:
 				soc_to_status[clientSoc] = NEW_SOC_USER
+				send_message_to_client(clientSoc, AWAITING_PASSWORD)
 				return
 		
 		elif soc_to_status[clientSoc] == NEW_SOC_USER:
@@ -174,10 +176,11 @@ def auth(soc, username, password) -> str:
 		return f"Hi {username}, good to see you."
 	else:
 		debug("falied to login. sending login-failed message")
+		soc_to_status[soc] = NEW_SOC
 		return FAIL_LOGIN
 
 def check_message_validity_v2(msg: bytes):
-	debug("inside check_message_validity_v2")
+	debug(f"inside check_message_validity_v2 > msg is {msg}")
 	"""
 	Validates a protocol message and returns:
 		1. type: 'AUTH', 'COMMAND', 'QUIT', 'ERROR'
@@ -216,7 +219,7 @@ def check_message_validity_v2(msg: bytes):
 		return ERROR_RQST, []
 
 	# ---- Check for COMMAND or USER_AUTH_RQST message ----
-	if ":" in content:
+	if ": " in content:
 		command_part, rest = content.split(":", 1)
 		command = command_part.strip()
 
@@ -228,14 +231,24 @@ def check_message_validity_v2(msg: bytes):
 		params = rest.split(" ") if rest else []
 
 		req_cmd = {"lcm", "parentheses", "caesar"}
-
-		if command in req_cmd: 
-			return COMMAND_RQST, [command] + params
 		
-		elif command == "User:":
+		if command == "lcm":
+			if len(params) == 2 and params[0].isnumeric() and params[1].isnumeric():
+				return COMMAND_RQST, [command] + params
+		
+		elif command == "parentheses":
+			if len(params) == 1 and set(params[0]) == {'(', ')'}:
+				return COMMAND_RQST, [command] + params
+		
+		elif command == "caesar":
+			if len(params) == 2 and check_caesar_validity(params[0]) and params[1].isnumeric():
+				return COMMAND_RQST, [command] + params
+
+		
+		elif command == "User":
 			return USER_AUTH_RQST, [command] + params
 		else: 
-			debug("falied to analyze the request as COMMAND-request or USER-AUTH-request")
+			debug(f"falied to analyze the request as COMMAND-request or USER-AUTH-request.\n\tcommand={command}\n\tparams={params}")
 			return ERROR_RQST, []
 
 	# ---- nothing mached ----
@@ -301,6 +314,7 @@ def check_caesar_validity(text: list[str]) -> bool:
             return False
 
     return True
+
 
 def compute_caesar(text: list[str], shift: int) -> str:
 

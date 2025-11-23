@@ -3,13 +3,14 @@ import socket
 HOST = "127.0.0.1"  # The server's hostname or IP address
 PORT = 1337         # The port used by the server
 END_OF_MESSAGE  = '\x00'
-BUFF_SIZE = 4     
+BUFF_SIZE = 40
 FAIL_LOGIN =    "Failed to login."
 QUIT_CM = "quit"
-DEBUG = True        # debug mode
+DEBUG = False        # debug mode
 
 # custom errors
-BAD_REQUEST			= "command type is invalid or disallowed for this client"
+BAD_REQUEST			    = "command type is invalid or disallowed for this client"
+AWAITING_PASSWORD		= "User inserted. Awaiting Password"
 
 def debug(log_msg):
     if DEBUG:
@@ -29,8 +30,17 @@ def main():
             
             User = input()
             UserAuthentication = f"{User}{END_OF_MESSAGE}"
+            debug('sending auth message...')
             clientSock.send(UserAuthentication.encode())
+            debug('wating response from the server...')
+            response = recvall(clientSock).decode()
             
+            if (response == BAD_REQUEST):
+                return
+            elif (response != AWAITING_PASSWORD):
+                debug("expected BAD_REQUEST or AWAITING_PASSWORD. panic!")
+                return
+
             Password = input()
 
             Authentication = f"{User}\n{Password}{END_OF_MESSAGE}"
